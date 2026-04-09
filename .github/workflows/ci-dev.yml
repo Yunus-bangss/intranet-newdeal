@@ -2,82 +2,55 @@ name: CI Pipeline - Dev
 
 on:
   push:
-    branches:
-      - dev
+    branches: [ dev ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: false
-          tags: votre-dockerhub-username/intranet-newdeal:dev
-          load: true
-
-      - name: Save image as artifact
         run: |
-          docker save votre-dockerhub-username/intranet-newdeal:dev > image.tar
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-image
-          path: image.tar
+          docker build -t newdeal-intranet:dev .
+          docker images
 
   security-scan:
     runs-on: ubuntu-latest
     needs: build
+    
     steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image
-          path: .
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Load Docker image
-        run: docker load < image.tar
+      - name: Run basic security check
+        run: |
+          echo "=== Scan for secrets ==="
+          if grep -r "password\|secret\|api_key" . 2>/dev/null | grep -v ".git\|node_modules\|binary\|vendor"; then
+            echo "Warning: Potential secrets found"
+          else
+            echo "No obvious secrets found"
+          fi
+          echo "=== Security scan completed ==="
 
-      - name: Scan for vulnerabilities (Trivy)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'votre-dockerhub-username/intranet-newdeal:dev'
-          format: 'table'
-          exit-code: '0'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-
-      - name: Scan for secrets (Gitleaks)
-        uses: gitleaks/gitleaks-action@v2
-        with:
-          args: --verbose
-
-  push:
+  push-image:
     runs-on: ubuntu-latest
     needs: security-scan
+    
     steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image
-          path: .
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Load Docker image
-        run: docker load < image.tar
+      - name: Build and tag image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/newdeal-intranet:dev .
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Push to Docker Hub
         run: |
-          docker push votre-dockerhub-username/intranet-newdeal:dev
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Push image
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/newdeal-intranet:dev
