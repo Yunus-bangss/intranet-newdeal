@@ -5,19 +5,14 @@ on:
     branches: [ main ]
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Build Docker image
         run: |
           docker build -t newdeal-intranet:latest -f intranet-newdeal/Dockerfile intranet-newdeal/
-      
-      - name: Push to GitHub Packages
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          docker tag newdeal-intranet:latest ghcr.io/${{ github.repository }}/newdeal-intranet:latest
-          docker push ghcr.io/${{ github.repository }}/newdeal-intranet:latest
+          docker images
