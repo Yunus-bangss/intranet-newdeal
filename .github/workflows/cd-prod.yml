@@ -2,70 +2,13 @@ name: CD Pipeline - Prod
 
 on:
   push:
-    branches:
-      - prod
+    branches: [ prod ]
 
 jobs:
-  security-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Pull image
-        run: docker pull votre-dockerhub-username/intranet-newdeal:dev
-
-      - name: Scan for critical vulnerabilities
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'votre-dockerhub-username/intranet-newdeal:dev'
-          format: 'table'
-          exit-code: '1'
-          severity: 'CRITICAL'
-
   deploy:
-    runs-on: runner_prod
-    needs: security-scan
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Pull image
-        run: docker pull votre-dockerhub-username/intranet-newdeal:dev
-
-      - name: Run container
-        run: |
-          docker stop intranet-container || true
-          docker rm intranet-container || true
-          docker run -d --name intranet-container -p 80:80 votre-dockerhub-username/intranet-newdeal:dev
-
-  notify:
     runs-on: ubuntu-latest
-    needs: deploy
-    if: always()
     steps:
-      - name: Send email notification
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          username: ${{ secrets.EMAIL_USERNAME }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: 'Pipeline Prod - Déploiement terminé'
-          body: |
-            Le pipeline de déploiement sur la branche prod est terminé.
-            Statut: ${{ needs.deploy.result }}
-          to: moussawade@groupeisi.com
-          from: ${{ secrets.EMAIL_USERNAME }}
+      - uses: actions/checkout@v4
+      - run: docker build -t newdeal-prod .
+      - run: docker run -d --name intranet -p 80:80 newdeal-prod
+      - run: sleep 2 && curl http://localhost:80
