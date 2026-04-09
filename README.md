@@ -186,3 +186,4 @@ Ce projet démontre la mise en place d'un pipeline CI/CD complet :
 **Étudiant** : Abdou Rahim Younouss Bangoura  
 **Date** : 9 Avril 2026update
 dev update
+dev
