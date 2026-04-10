@@ -12,21 +12,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Pull image and scan
-        run: |
-          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
-            echo "Logging in to Docker Hub..."
-            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/intranet-newdeal:dev
-            echo "Pull successful"
-          else
-            echo "Skip - Docker Hub credentials not configured"
-          fi
+      - name: Build image locally
+        run: docker build -t intranet-newdeal:prod .
 
       - name: Scan for CRITICAL vulnerabilities (Trivy)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/intranet-newdeal:dev'
+          image-ref: 'intranet-newdeal:prod'
           format: 'table'
           exit-code: '0'
           severity: 'CRITICAL'
@@ -38,24 +30,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Pull and deploy
+      - name: Build image
+        run: docker build -t intranet-newdeal:prod .
+
+      - name: Run container on port 80
         run: |
-          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
-            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/intranet-newdeal:dev
-            docker stop intranet-newdeal || true
-            docker rm intranet-newdeal || true
-            docker run -d --name intranet-newdeal -p 80:80 ${{ secrets.DOCKERHUB_USERNAME }}/intranet-newdeal:dev
-            echo "Deployment successful"
-          else
-            echo "Skip deployment - Docker Hub not configured"
-          fi
+          docker stop intranet-newdeal || true
+          docker rm intranet-newdeal || true
+          docker run -d --name intranet-newdeal -p 80:80 intranet-newdeal:prod
 
       - name: Verify deployment
         run: |
           sleep 3
           curl -s http://localhost:80 | head -5
-          docker ps | grep intranet-newdeal || echo "Container not running"
+          docker ps | grep intranet-newdeal
 
   notify:
     runs-on: ubuntu-latest
