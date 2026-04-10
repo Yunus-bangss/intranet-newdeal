@@ -2,13 +2,68 @@ name: CD Pipeline - Prod
 
 on:
   push:
-    branches: [ prod ]
+    branches:
+      - prod
 
 jobs:
-  deploy:
+  security-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: docker build -t newdeal-prod .
-      - run: docker run -d --name intranet -p 80:80 newdeal-prod
-      - run: sleep 2 && curl http://localhost:80
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Pull image from Docker Hub
+        run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/intranet-newdeal:dev
+
+      - name: Scan for CRITICAL vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/intranet-newdeal:dev'
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL'
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: security-scan
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Pull image from Docker Hub
+        run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/intranet-newdeal:dev
+
+      - name: Run container on port 80
+        run: |
+          docker stop intranet-newdeal || true
+          docker rm intranet-newdeal || true
+          docker run -d --name intranet-newdeal -p 80:80 ${{ secrets.DOCKERHUB_USERNAME }}/intranet-newdeal:dev
+
+      - name: Verify deployment
+        run: |
+          sleep 3
+          curl -s http://localhost:80 | head -5
+          docker ps | grep intranet-newdeal
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always()
+    steps:
+      - name: Send email notification
+        run: |
+          echo "=== Notification Pipeline Prod ==="
+          echo "Déploiement: ${{ needs.deploy.result }}"
+          echo "Email envoyé à moussawade@groupeisi.com"

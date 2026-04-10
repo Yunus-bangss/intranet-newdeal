@@ -1,150 +1,95 @@
 # Projet DevOps - Intranet Newdeal
 
-## Introduction
-
-Ce projet est un site intranet statique développé dans le cadre du cours DevOps CI/CD. Il utilise un template HTML5 UP et est déployé via Docker et GitHub Actions.
+## Examen DevOps L3 IAGE 2026
 
 ---
 
-## 1. Présentation du projet
+## 1. Gestion du repository
 
-- **Nom du projet** : Newdeal Intranet
-- **Étudiant** : Abdou Rahim Younouss Bangoura
+- **Nom du repository** : `intranet-newdeal`
+- **URL** : https://github.com/Yunus-bangss/intranet-newdeal
+- **Branches créées** :
+  - `main` - Branche principale
+  - `dev` - Branche développement
+  - `prod` - Branche production
+- **Collaborateur invité** : moisawade@gmail.com
+
+---
+
+## 2. Personnalisation du site
+
 - **Template utilisé** : Forty by HTML5 UP (licence CCA 3.0)
-- **Technologies** : HTML, CSS, Docker, GitHub Actions
+- **Image Docker de base** : nginx:alpine3.23-slim
+- **Nom du projet** : Intranet Newdeal - Ministère de la Communication Sénégal
+- **Contenu personnalisé** : Pages HTML adaptées avec le nom "Newdeal"
 
 ---
 
-## 2. Structure des fichiers
+## 3. Pipeline CI sur branche dev
 
-```
-intranet-newdeal/
-├── index.html          # Page d'accueil
-├── landing.html        # Page landing
-├── generic.html        # Page générique
-├── elements.html       # Page éléments
-├── Dockerfile          # Configuration Docker
-├── assets/             # CSS, JS, images
-│   ├── css/
-│   ├── js/
-│   ├── sass/
-│   └── webfonts/
-├── images/             # Images du site
-└── .github/
-    └── workflows/
-        └── ci-cd.yml   # Pipeline CI/CD
+### Jobs configurés :
+1. **Build** : Construction de l'image Docker avec nginx:alpine3.23-slim
+2. **Security-scan** : Vérification des vulnérabilités (Trivy) et secrets (Gitleaks)
+3. **Push** : Envoi de l'image vers Docker Hub
+4. **Notify** : Notification du statut
+
+### Déclenchement :
+```bash
+git checkout dev
+git push origin dev
 ```
 
 ---
 
-## 3. Personnalisation effectuée
+## 4. Pipeline CD sur branche prod
 
-### Dans index.html :
-- Titre : "Newdeal - Intranet"
-- Nom : "Abdou Rahim Younouss Bangoura"
-- Menu : Accueil, Services, À propos, Contact
-- Tuiles : Documents, Équipe, Projets, Actualités, Ressources, Support
-- Coordonnées : contact@newdeal.intra, +224 612 00 00 00, Conakry
+### Jobs configurés :
+1. **Security-scan** : Scan CRITICAL avant déploiement
+2. **Deploy** : Déploiement sur ubuntu-latest (port 80)
+3. **Notify** : Notification du résultat
+
+### Déclenchement :
+```bash
+git checkout prod
+git push origin prod
+```
 
 ---
 
-## 4. Configuration Docker
+## 5. Évolution du pipeline
 
-### Dockerfile :
-```dockerfile
-FROM nginx:alpine
+- ✅ Image de base : nginx:alpine3.23-slim (version légère)
+- ✅ Scan sécurité avec Trivy et Gitleaks
+- ✅ Notification (simulation echo)
+- ✅ Push vers Docker Hub
 
-COPY index.html /usr/share/nginx/html/
-COPY elements.html /usr/share/nginx/html/
-COPY generic.html /usr/share/nginx/html/
-COPY landing.html /usr/share/nginx/html/
-COPY assets /usr/share/nginx/html/assets
-COPY images /usr/share/nginx/html/images
+---
 
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
-```
-
-### Commandes Docker locales :
+## 6. Commandes utilisées
 
 ```bash
-# Construction de l'image
+# Clone du repository
+git clone https://github.com/Yunus-bangss/intranet-newdeal.git
+cd intranet-newdeal
+
+# Création des branches
+git checkout -b dev
+git checkout -b prod
+
+# Push des branches
+git push origin dev
+git push origin prod
+
+# Construction locale Docker
 docker build -t newdeal-intranet:latest .
 
-# Lancement du conteneur
-docker run -d -p 8080:80 --name newdeal newdeal-intranet:latest
-
-# Arrêt et suppression
-docker stop newdeal && docker rm newdeal
+# Lancement local
+docker run -d -p 80:80 --name newdeal newdeal-intranet:latest
 ```
 
 ---
 
-## 5. Configuration GitHub Actions
-
-### Fichier : .github/workflows/ci-cd.yml
-
-```yaml
-name: Build and Deploy
-
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Build Docker image
-        run: |
-          docker build -t newdeal-intranet:latest -f Dockerfile .
-          docker images
-```
-
-### Fonctionnement :
-1. À chaque `git push` sur la branche `main`, le workflow se déclenche automatiquement
-2. Il checkout le code depuis GitHub
-3. Il build l'image Docker
-4. Si réussi = ✅ (vert)
-
----
-
-## 6. Commandes Git utilisées
-
-```bash
-# Initialisation du repo local
-git init
-git add .
-git commit -m "Initial commit"
-
-# Ajout du remote GitHub
-git remote add origin https://github.com/Yunus-bangss/intranet-newdeal.git
-
-# Push vers GitHub
-git push -u origin main
-
-# Après modifications
-git add .
-git commit -m "Description des modifications"
-git push origin main
-```
-
----
-
-## 7. Résultat CI/CD
-
-- **Statut** : ✅ Succès (success)
-- **Nombre de runs** : 10+
-- **Temps de build** : ~13 secondes
-
----
-
-## 8. Comment tester le projet
+## 7. Comment tester le projet
 
 ### En local :
 ```bash
@@ -154,35 +99,36 @@ docker run -d -p 8080:80 newdeal-intranet:latest
 Puis ouvrir http://localhost:8080
 
 ### Via GitHub Actions :
-1. Faire un push sur la branche main
+1. Faire un push sur la branche dev ou prod
 2. Aller dans l'onglet **Actions** du repo
-3. Vérifier que le build est réussi (vert)
+3. Vérifier que les jobs sont réussis
 
 ---
 
-## 9. Résumé des étapes réalisées
+## 8. Résumé des étapes réalisées
 
 | Étape | Description | Status |
 |-------|-------------|--------|
-| 1 | Création du site HTML | ✅ |
-| 2 | Personnalisation (nom, menu, contenu) | ✅ |
+| 1 | Création du repository GitHub | ✅ |
+| 2 | Personnalisation du template | ✅ |
 | 3 | Configuration Dockerfile | ✅ |
 | 4 | Test local Docker | ✅ |
-| 5 | Création repo GitHub | ✅ |
-| 6 | Configuration GitHub Actions | ✅ |
-| 7 | Push et CI/CD automatique | ✅ |
+| 5 | Pipeline CI (dev) | ✅ |
+| 6 | Pipeline CD (prod) | ✅ |
+| 7 | Scan sécurité (Trivy + Gitleaks) | ✅ |
+| 8 | Push Docker Hub | ✅ |
 
 ---
 
-## 10. Conclusion
+## 9. Conclusion
 
 Ce projet démontre la mise en place d'un pipeline CI/CD complet :
 - Build automatique d'une image Docker
+- Scan de vulnérabilités et secrets
 - Déclenchement sur push GitHub
-- Workflow simple et fonctionnel
+- Workflow fonctionnel
 
 ---
 
 **Étudiant** : Abdou Rahim Younouss Bangoura  
-**Date** : 9 Avril 2026prod update
-update
+**Date** : 10 Avril 2026
